@@ -1,13 +1,44 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 
 import type { ErrorResponse } from "@/shared/types";
 
-const app = new Hono();
+import type { Context } from "./context";
+import { lucia } from "./lucia";
+import { authRouter } from "./routes/auth";
 
-app.get("/", (c) => {
-  return c.text("Hello Hono!");
+const app = new Hono<Context>();
+
+app.use("*", cors(), async (c, next) => {
+  const sessionId = lucia.readSessionCookie(c.req.header("Cookie") ?? "");
+  if (!sessionId) {
+    c.set("user", null);
+    c.set("session", null);
+
+    return await next();
+  }
+
+  const { session, user } = await lucia.validateSession(sessionId);
+  if (!session) {
+    const blankSessionCookie = lucia.createBlankSessionCookie().serialize();
+
+    c.header("Set-Cookie", blankSessionCookie, { append: true });
+  } else if (session.fresh) {
+    const sessionCookie = lucia.createSessionCookie(session.id).serialize();
+
+    c.header("Set-Cookie", sessionCookie, { append: true });
+  }
+
+  c.set("session", session);
+  c.set("user", user);
+
+  return await next();
 });
+
+export type ApiRoutes = typeof routes;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const routes = app.basePath("/api").route("/auth", authRouter);
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
