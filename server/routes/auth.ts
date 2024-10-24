@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/adapter";
 import type { Context } from "@/context";
-import { userTable } from "@/db/schemas/auth";
+import { usersTable } from "@/db/schemas/auth";
 import { lucia } from "@/lucia";
 import { loggedIn } from "@/middleware/logged-in";
 import { zValidator } from "@hono/zod-validator";
@@ -21,7 +21,7 @@ export const authRouter = new Hono<Context>()
     const userId = generateId(15);
 
     try {
-      await db.insert(userTable).values({
+      await db.insert(usersTable).values({
         id: userId,
         username,
         passwordHash,
@@ -52,8 +52,8 @@ export const authRouter = new Hono<Context>()
 
     const existingUsersQuery = await db
       .select()
-      .from(userTable)
-      .where(eq(userTable.username, username))
+      .from(usersTable)
+      .where(eq(usersTable.username, username))
       .limit(1);
     const existingUser = existingUsersQuery.at(0);
     if (!existingUser) {
