@@ -94,8 +94,8 @@ export const authRouter = new Hono<Context>()
 
     return c.redirect("/");
   })
-  .get("user", loggedIn, async (c) => {
-    const user = c.get("user") as User;
+  .get("/user", loggedIn, async (c) => {
+    const user = c.get("user")!;
 
     return c.json<SuccessResponse<{ username: User["username"] }>>({
       success: true,
