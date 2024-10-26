@@ -1,14 +1,21 @@
 ### Create post
 POST http://localhost:3000/api/posts
 Content-Type: application/x-www-form-urlencoded
-Cookie: auth_session=bbxcio2vi7lcntbndjed2cj3w2qbfsnjq7gkheni; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
+Cookie: auth_session=g4hgydpraegxktgoq3blbmhdbk5xarttxzncmzfb; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
 
-title="Why check if something is odd simply, when you can do it with ✨AI✨"
-&url=https://github.com/rhettlunn/is-odd-ai
+title="We can now fix McDonald's ice cream machines"
+&url=https://www.ifixit.com/News/102368/victory-is-sweet-we-can-now-fix-mcdonalds-ice-cream-machines
+
+### Create post comment
+POST http://localhost:3000/api/posts/2/comment
+Content-Type: application/x-www-form-urlencoded
+Cookie: auth_session=g4hgydpraegxktgoq3blbmhdbk5xarttxzncmzfb; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
+
+content=What's the over/under on how many franchises will now resume selling ice cream?
 
 ### Get all posts
 GET http://localhost:3000/api/posts
 
 ### Upvote post
-PATCH http://localhost:3000/api/posts/1/upvote
-Cookie: auth_session=bbxcio2vi7lcntbndjed2cj3w2qbfsnjq7gkheni; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
+PATCH http://localhost:3000/api/posts/2/upvote
+Cookie: auth_session=g4hgydpraegxktgoq3blbmhdbk5xarttxzncmzfb; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax

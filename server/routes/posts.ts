@@ -5,6 +5,7 @@ import { and, asc, countDistinct, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/adapter";
 import type { Context } from "@/context";
 import { usersTable } from "@/db/schemas/auth";
+import { commentsTable } from "@/db/schemas/comments";
 import { postsTable } from "@/db/schemas/posts";
 import { postUpvotesTable } from "@/db/schemas/upvotes";
 import { loggedIn } from "@/middleware/logged-in";
@@ -12,8 +13,10 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
 import {
+  createCommentSchema,
   createPostSchema,
   paginationSchema,
+  type Comment,
   type PaginatedResponse,
   type Post,
   type SuccessResponse,
@@ -45,62 +48,59 @@ export const postsRouter = new Hono<Context>()
       201,
     );
   })
-  .patch(
-    "/:postId/upvote",
+  .post(
+    "/:postId/comment",
     loggedIn,
     zValidator("param", z.object({ postId: z.coerce.number() })),
+    zValidator("form", createCommentSchema),
     async (c) => {
       const user = c.get("user")!;
 
       const { postId } = c.req.valid("param");
+      const { content } = c.req.valid("form");
 
-      let pointsChange: -1 | 1 = 1;
-      const points = await db.transaction(async (tx) => {
-        const [existingUpvote] = await tx
-          .select()
-          .from(postUpvotesTable)
-          .where(
-            and(
-              eq(postUpvotesTable.postId, postId),
-              eq(postUpvotesTable.userId, user.id),
-            ),
-          )
-          .limit(1);
-
-        pointsChange = existingUpvote ? -1 : 1;
-
-        const [updatedPost] = await tx
+      const [comment] = await db.transaction(async (tx) => {
+        const [updated] = await tx
           .update(postsTable)
-          .set({ points: sql<number>`${postsTable.points} + ${pointsChange}` })
-          .where(and(eq(postsTable.id, postId)))
-          .returning({ points: postsTable.points });
-        if (!updatedPost) {
+          .set({ commentCount: sql<number>`${postsTable.commentCount} + 1` })
+          .where(eq(postsTable.id, postId))
+          .returning({ commentCount: postsTable.commentCount });
+        if (!updated) {
           throw new HTTPException(404, { message: "Post not found" });
         }
 
-        if (existingUpvote) {
-          await tx
-            .delete(postUpvotesTable)
-            .where(eq(postUpvotesTable.id, existingUpvote.id));
-        } else {
-          await tx.insert(postUpvotesTable).values({
-            postId,
-            userId: user.id,
+        return await tx
+          .insert(commentsTable)
+          .values({ userId: user.id, postId, content })
+          .returning({
+            id: commentsTable.id,
+            userId: commentsTable.userId,
+            postId: commentsTable.postId,
+            content: commentsTable.content,
+            points: commentsTable.points,
+            commentCount: commentsTable.commentCount,
+            depth: commentsTable.depth,
+            parentCommentId: commentsTable.parentCommentId,
+            createdAt: getISOFormatDateQuery(commentsTable.createdAt).as(
+              "created_at",
+            ),
           });
-        }
-
-        return updatedPost.points;
       });
 
-      const isUpvoted = pointsChange > 0;
-
-      return c.json<SuccessResponse<{ count: number; isUpvoted: boolean }>>(
+      return c.json<SuccessResponse<{ comment: Comment }>>(
         {
           success: true,
-          message: "Post updated",
-          data: { count: points, isUpvoted },
+          message: "Comment created",
+          data: {
+            comment: {
+              ...comment,
+              author: user,
+              commentUpvotes: [],
+              childComments: [],
+            },
+          },
         },
-        200,
+        201,
       );
     },
   )
@@ -176,4 +176,63 @@ export const postsRouter = new Hono<Context>()
       },
       200,
     );
-  });
+  })
+  .patch(
+    "/:postId/upvote",
+    loggedIn,
+    zValidator("param", z.object({ postId: z.coerce.number() })),
+    async (c) => {
+      const user = c.get("user")!;
+
+      const { postId } = c.req.valid("param");
+
+      let pointsChange: -1 | 1 = 1;
+      const points = await db.transaction(async (tx) => {
+        const [existingUpvote] = await tx
+          .select()
+          .from(postUpvotesTable)
+          .where(
+            and(
+              eq(postUpvotesTable.postId, postId),
+              eq(postUpvotesTable.userId, user.id),
+            ),
+          )
+          .limit(1);
+
+        pointsChange = existingUpvote ? -1 : 1;
+
+        const [updatedPost] = await tx
+          .update(postsTable)
+          .set({ points: sql<number>`${postsTable.points} + ${pointsChange}` })
+          .where(and(eq(postsTable.id, postId)))
+          .returning({ points: postsTable.points });
+        if (!updatedPost) {
+          throw new HTTPException(404, { message: "Post not found" });
+        }
+
+        if (existingUpvote) {
+          await tx
+            .delete(postUpvotesTable)
+            .where(eq(postUpvotesTable.id, existingUpvote.id));
+        } else {
+          await tx.insert(postUpvotesTable).values({
+            postId,
+            userId: user.id,
+          });
+        }
+
+        return updatedPost.points;
+      });
+
+      const isUpvoted = pointsChange > 0;
+
+      return c.json<SuccessResponse<{ count: number; isUpvoted: boolean }>>(
+        {
+          success: true,
+          message: "Post updated",
+          data: { count: points, isUpvoted },
+        },
+        200,
+      );
+    },
+  );

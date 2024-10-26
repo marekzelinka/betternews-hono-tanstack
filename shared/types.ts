@@ -1,3 +1,4 @@
+import { insertCommentSchema } from "@/db/schemas/comments";
 import { insertPostSchema } from "@/db/schemas/posts";
 import { z } from "zod";
 
@@ -34,6 +35,24 @@ export type Post = {
   isUpvoted: boolean;
 };
 
+export type Comment = {
+  id: number;
+  userId: string;
+  postId: number;
+  content: string;
+  points: number;
+  commentCount: number;
+  depth: number;
+  parentCommentId: number | null;
+  createdAt: string;
+  author: {
+    id: string;
+    username: string;
+  };
+  commentUpvotes: { userId: string }[];
+  childComments: Comment[];
+};
+
 export const loginSchema = z.object({
   username: z
     .string()
@@ -53,6 +72,8 @@ export const createPostSchema = insertPostSchema
     message: "Either URL or Content must be provided",
     path: ["url", "content"],
   });
+
+export const createCommentSchema = insertCommentSchema.pick({ content: true });
 
 export const sortBySchema = z.enum(["points", "recent"]);
 
