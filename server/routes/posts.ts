@@ -182,7 +182,6 @@ export const postsRouter = new Hono<Context>()
     zValidator("param", z.object({ postId: z.coerce.number() })),
     async (c) => {
       const user = c.get("user");
-      console.log(user);
 
       const { postId } = c.req.valid("param");
 
