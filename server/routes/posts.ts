@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { and, asc, countDistinct, desc, eq, sql } from "drizzle-orm";
+import { and, asc, countDistinct, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/adapter";
 import type { Context } from "@/context";
 import { usersTable } from "@/db/schemas/auth";
 import { commentsTable } from "@/db/schemas/comments";
 import { postsTable } from "@/db/schemas/posts";
-import { postUpvotesTable } from "@/db/schemas/upvotes";
+import { commentUpvotesTable, postUpvotesTable } from "@/db/schemas/upvotes";
 import { loggedIn } from "@/middleware/logged-in";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -177,6 +177,111 @@ export const postsRouter = new Hono<Context>()
       200,
     );
   })
+  .get(
+    "/:postId/comments",
+    zValidator("param", z.object({ postId: z.coerce.number() })),
+    zValidator(
+      "query",
+      paginationSchema.extend({
+        includeChildren: z.coerce.boolean().optional(),
+      }),
+    ),
+    async (c) => {
+      const user = c.get("user");
+
+      const { postId } = c.req.valid("param");
+      const { limit, page, sortBy, orderBy, includeChildren } =
+        c.req.valid("query");
+
+      const offset = (page - 1) * limit;
+      const sortByColumn =
+        sortBy === "points" ? commentsTable.points : commentsTable.createdAt;
+      const sortOrder =
+        orderBy === "desc" ? desc(sortByColumn) : asc(sortByColumn);
+
+      const [postExists] = await db
+        .select({ exists: sql`1` })
+        .from(postsTable)
+        .where(eq(postsTable.id, postId))
+        .limit(1);
+      if (!postExists) {
+        throw new HTTPException(404, { message: "Post not found" });
+      }
+
+      const [count] = await db
+        .select({ count: countDistinct(commentsTable.id) })
+        .from(commentsTable)
+        .where(
+          and(
+            eq(commentsTable.postId, postId),
+            isNull(commentsTable.parentCommentId),
+          ),
+        );
+
+      const comments = await db.query.comments.findMany({
+        where: and(
+          eq(commentsTable.postId, postId),
+          isNull(commentsTable.parentCommentId),
+        ),
+        orderBy: sortOrder,
+        limit,
+        offset,
+        with: {
+          author: {
+            columns: {
+              id: true,
+              username: true,
+            },
+          },
+          commentUpvotes: {
+            columns: { userId: true },
+            where: eq(commentUpvotesTable.userId, user?.id ?? ""),
+            limit: 1,
+          },
+          childComments: {
+            limit: includeChildren ? 2 : 0,
+            with: {
+              author: {
+                columns: {
+                  id: true,
+                  username: true,
+                },
+              },
+              commentUpvotes: {
+                columns: { userId: true },
+                where: eq(commentUpvotesTable.userId, user?.id ?? ""),
+                limit: 1,
+              },
+            },
+            orderBy: sortOrder,
+            extras: {
+              createdAt: getISOFormatDateQuery(commentsTable.createdAt).as(
+                "created_at",
+              ),
+            },
+          },
+        },
+        extras: {
+          createdAt: getISOFormatDateQuery(commentsTable.createdAt).as(
+            "created_at",
+          ),
+        },
+      });
+
+      return c.json<PaginatedResponse<{ comments: Comment[] }>>(
+        {
+          success: true,
+          message: "Comments fetched",
+          data: { comments: comments as Comment[] },
+          pagination: {
+            page,
+            totalPages: Math.ceil(count.count / limit),
+          },
+        },
+        200,
+      );
+    },
+  )
   .patch(
     "/:postId/upvote",
     loggedIn,

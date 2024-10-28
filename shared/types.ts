@@ -50,7 +50,7 @@ export type Comment = {
     username: string;
   };
   commentUpvotes: { userId: string }[];
-  childComments: Comment[];
+  childComments?: Comment[];
 };
 
 export const loginSchema = z.object({
