@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, countDistinct, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/adapter";
 import type { Context } from "@/context";
@@ -13,7 +13,9 @@ import { z } from "zod";
 
 import {
   createCommentSchema,
+  paginationSchema,
   type Comment,
+  type PaginatedResponse,
   type SuccessResponse,
 } from "@/shared/types";
 import { getISOFormatDateQuery } from "@/lib/utils";
@@ -95,6 +97,66 @@ export const commentsRouter = new Hono<Context>()
           },
         },
         201,
+      );
+    },
+  )
+  .get(
+    "/:commentId/comments",
+    zValidator("param", z.object({ commentId: z.coerce.number() })),
+    zValidator("query", paginationSchema),
+    async (c) => {
+      const user = c.get("user");
+
+      const { commentId } = c.req.valid("param");
+      const { limit, page, sortBy, orderBy } = c.req.valid("query");
+
+      const offset = (page - 1) * limit;
+      const sortByColumn =
+        sortBy === "points" ? commentsTable.points : commentsTable.createdAt;
+      const sortOrder =
+        orderBy === "desc" ? desc(sortByColumn) : asc(sortByColumn);
+
+      const [count] = await db
+        .select({ count: countDistinct(commentsTable.id) })
+        .from(commentsTable)
+        .where(eq(commentsTable.parentCommentId, commentId));
+
+      const comments = await db.query.comments.findMany({
+        where: and(eq(commentsTable.parentCommentId, commentId)),
+        orderBy: sortOrder,
+        limit,
+        offset,
+        with: {
+          author: {
+            columns: {
+              id: true,
+              username: true,
+            },
+          },
+          commentUpvotes: {
+            columns: { userId: true },
+            where: eq(commentUpvotesTable.userId, user?.id ?? ""),
+            limit: 1,
+          },
+        },
+        extras: {
+          createdAt: getISOFormatDateQuery(commentsTable.createdAt).as(
+            "created_at",
+          ),
+        },
+      });
+
+      return c.json<PaginatedResponse<{ comments: Comment[] }>>(
+        {
+          success: true,
+          message: "Comments fetched",
+          data: { comments: comments as Comment[] },
+          pagination: {
+            page,
+            totalPages: Math.ceil(count.count / limit),
+          },
+        },
+        200,
       );
     },
   )

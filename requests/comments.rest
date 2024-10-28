@@ -1,8 +1,11 @@
 ### Create comment on parent comment
-POST http://localhost:3000/api/comments/5
+POST http://localhost:3000/api/comments/6
 Content-Type: application/x-www-form-urlencoded
 
-content=So cool!
+content=To be extact, its 10:03:09
+
+### Get child comments
+GET http://localhost:3000/api/comments/6/comments
 
 ### Upvote comment
 PATCH http://localhost:3000/api/comments/7/upvote
