@@ -1,7 +1,6 @@
 ### Create post
 POST http://localhost:3000/api/posts
 Content-Type: application/x-www-form-urlencoded
-Cookie: auth_session=er6dpopd6haydcunyptnnmkarknnadvatbzdmjh5; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
 
 title="We can now fix McDonald's ice cream machines"
 &url=https://www.ifixit.com/News/102368/victory-is-sweet-we-can-now-fix-mcdonalds-ice-cream-machines
@@ -9,16 +8,17 @@ title="We can now fix McDonald's ice cream machines"
 ### Create post comment
 POST http://localhost:3000/api/posts/3/comment
 Content-Type: application/x-www-form-urlencoded
-Cookie: auth_session=er6dpopd6haydcunyptnnmkarknnadvatbzdmjh5; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
 
 content=Found it on Twitter!
 
 ### Get all posts
-GET http://localhost:3000/api/posts
+GET http://localhost:3000/api/postsauth_session=5xx2niu22ml3tfobvnhq3oumyzrdhg52jvepi5ix; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
 
 ### Get all post comments
 GET http://localhost:3000/api/posts/3/comments
 
+### Get post by id
+GET http://localhost:3000/api/posts/3
+
 ### Upvote post
 PATCH http://localhost:3000/api/posts/3/upvote
-Cookie: auth_session=er6dpopd6haydcunyptnnmkarknnadvatbzdmjh5; HttpOnly; Max-Age=2592000; Path=/; SameSite=Lax
