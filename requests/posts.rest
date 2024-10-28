@@ -2,23 +2,23 @@
 POST http://localhost:3000/api/posts
 Content-Type: application/x-www-form-urlencoded
 
-title="We can now fix McDonald's ice cream machines"
-&url=https://www.ifixit.com/News/102368/victory-is-sweet-we-can-now-fix-mcdonalds-ice-cream-machines
+title=Super cool tutorial
+&url=https://www.youtube.com/watch?v=eHbO5OWBBpg
 
 ### Create post comment
-POST http://localhost:3000/api/posts/3/comment
+POST http://localhost:3000/api/posts/5/comment
 Content-Type: application/x-www-form-urlencoded
 
-content=Found it on Twitter!
+content=It's by Better Stack!
 
 ### Get all posts
 GET http://localhost:3000/api/posts
 
 ### Get all post comments
-GET http://localhost:3000/api/posts/3/comments
+GET http://localhost:3000/api/posts/5/comments?includeChildren=true
 
 ### Get post by id
-GET http://localhost:3000/api/posts/3
+GET http://localhost:3000/api/posts/5
 
 ### Upvote post
-PATCH http://localhost:3000/api/posts/3/upvote
+PATCH http://localhost:3000/api/posts/5/upvote

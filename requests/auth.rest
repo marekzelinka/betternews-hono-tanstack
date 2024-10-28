@@ -9,7 +9,7 @@ username=michael
 POST http://localhost:3000/api/auth/login
 Content-Type: application/x-www-form-urlencoded
 
-username=ryan
+username=marek
 &password=123456
 
 ### Sign out
