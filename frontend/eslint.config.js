@@ -32,7 +32,7 @@ export default [
   {
     settings: {
       tailwindcss: {
-        config: "tailwind.config.js",
+        config: "tailwind.config.ts",
         callees: ["cn", "cva"],
       },
     },
